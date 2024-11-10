@@ -34,6 +34,7 @@ class FileService:
 
     @staticmethod
     def _save_json(resources: list[dict]) -> None:
+        """Helper method to save resources in JSON format."""
         output_path = 'data/research_resources.json'
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(resources, f, indent=4, ensure_ascii=False)
@@ -41,6 +42,7 @@ class FileService:
 
     @staticmethod
     def _save_csv(resources: list[dict]) -> None:
+        """Helper method to save resources in CSV format."""
         output_path = 'data/research_resources.csv'
         df = pd.DataFrame(resources)
         df.to_csv(output_path, index=False, encoding='utf-8')

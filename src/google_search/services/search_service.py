@@ -11,7 +11,7 @@ import requests
 from src.google_search.config.config import Config
 from src.google_search.utils.promt_util import Prompts
 from src.google_search.utils.query_validator import QueryValidator
-from src.google_search.utils.helpers import Helpers
+from src.google_search.utils.query_utils import QueryHelper
 from src.logger import log
 
 
@@ -43,29 +43,13 @@ class SearchService:
         """
         num_queries_per_technique *= 2
 
-        def generate_and_filter_queries(prompt: str) -> List[str]:
-            helper = Helpers()
-            try:
-                response = self.model.generate_content(prompt)
-                queries = [helper.clean_query(q) for q in response.text.strip().split('\n')]
-
-                quality_queries = [q for q in queries if len(q) > 5 and len(q.split()) >= 3]
-                return quality_queries
-            except Exception as e:
-                log.error(f"Error generating queries: {e}")
-                return []
-
         log.info("Generating queries using the Zero Shot technique...")
 
         prompt = Prompts().zero_shot_prompt(self.base_topic, num_queries_per_technique)
-        queries = generate_and_filter_queries(prompt)
+        queries = QueryHelper.generate_and_filter_queries(self.model, prompt)
 
         if not queries:
-            queries = [
-                f'"{self.base_topic} technical implementation"',
-                f'"{self.base_topic} methodology"',
-                f'"{self.base_topic} case study and analysis"'
-            ]
+            queries = QueryHelper.default_queries(self.base_topic)
 
         results = queries
 
@@ -95,10 +79,18 @@ class SearchService:
             'start': start_index,
             'siteSearchFilter': 'e'
         }
-
         try:
-            response = requests.get(base_url, params=params)
+            CURRENT_TRIES = 0
+
+            while CURRENT_TRIES <= Config.MAX_TRIES:
+                response = requests.get(base_url, params=params)
+                if response.status_code == 200:
+                    break
+
+                CURRENT_TRIES += 1
+
             return response.json()
+
         except requests.exceptions.RequestException as e:
             log.error(f"Error executing search: {e}")
             return None
