@@ -11,6 +11,7 @@ import requests
 from src.google_search.config.config import Config
 from src.google_search.utils.promt_util import Prompts
 from src.google_search.utils.query_validator import QueryValidator
+from src.google_search.utils.helpers import Helpers
 from src.logger import log
 
 
@@ -42,16 +43,11 @@ class SearchService:
         """
         num_queries_per_technique *= 2
 
-        def clean_query(query: str) -> str:
-            """Clean and format a query string."""
-            query = re.sub(r'^[-\d\s•.]*', '', query.strip())
-            query = re.sub(r'^[A-Za-z]+:\s*', '', query)
-            return query.strip().strip('"')
-
         def generate_and_filter_queries(prompt: str) -> List[str]:
+            helper = Helpers()
             try:
                 response = self.model.generate_content(prompt)
-                queries = [clean_query(q) for q in response.text.strip().split('\n')]
+                queries = [helper.clean_query(q) for q in response.text.strip().split('\n')]
 
                 quality_queries = [q for q in queries if len(q) > 5 and len(q.split()) >= 3]
                 return quality_queries
@@ -167,30 +163,4 @@ class SearchService:
             log.info(f"Total resources collected: {len(all_resources)}")
             return all_resources
 
-    def save_results(self, resources: List[dict], output_format: str = 'csv'):
-        """
-            Save the collected resources to a file in the specified format.
 
-            :arg
-                resources : List[dict]
-                    A list of dictionaries, each representing a resource with details like title, URL, and snippet.
-                output_format : str, optional
-                    The format to save the file in, either 'csv' or 'json' (default is 'csv').
-
-            :return
-                None
-                    Saves the resources to a file in the 'data' directory, named either 'research_resources.json' or 'research_resources.csv' based on the specified format.
-        """
-        os.makedirs('data', exist_ok=True)
-
-        if output_format.lower() == 'json':
-            output_path = 'data/research_resources.json'
-            with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(resources, f, indent=4, ensure_ascii=False)
-            log.info(f"Results saved to {output_path}")
-
-        elif output_format.lower() == 'csv':
-            output_path = 'data/research_resources.csv'
-            df = pd.DataFrame(resources)
-            df.to_csv(output_path, index=False, encoding='utf-8')
-            log.info(f"Results saved to {output_path}")

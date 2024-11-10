@@ -2,6 +2,7 @@ import os
 
 from src.google_search.config.config import Config
 from src.google_search.services.search_service import SearchService
+from src.google_search.services.file_service import FileService
 from src.google_search.utils.scraper import ContentScraper
 from src.logger import log
 
@@ -33,7 +34,7 @@ def run_google_search():
         log.info(f"Total resources collected: {len(resources)}")
 
         log.info("Saving results...")
-        search_service.save_results(resources, 'csv')
+        FileService().save_results(resources, 'csv')
         log.info("Results saved successfully")
 
         log.info("Starting URL data scraping...")
