@@ -45,15 +45,14 @@ class ContentScraper:
                                     )
             writer.writeheader()
 
-        with ThreadPoolExecutor(max_workers=8) as executor:
-            futures = {executor.submit(self._scrape_url, url): url for url in urls_to_scrape}
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                futures = {executor.submit(self._scrape_url, url): url for url in urls_to_scrape}
 
-            for future in tqdm(as_completed(futures), total=len(futures), desc="Scraping content"):
-                url = futures[future]
-                try:
-                    result = future.result()
-                    if result:
-                        with open(output_path, mode='a', newline='', encoding='utf-8') as file:
+                for future in tqdm(as_completed(futures), total=len(futures), desc="Scraping content"):
+                    url = futures[future]
+                    try:
+                        result = future.result()
+                        if result:
                             writer = csv.DictWriter(file,
                                                     fieldnames=['page_title', 'link', 'page_content'],
                                                     escapechar='\\',
@@ -61,8 +60,8 @@ class ContentScraper:
                                                     )
                             writer.writerow(result)
 
-                except Exception as e:
-                    log.error(f"Failed to scrape {url}: {e}")
+                    except Exception as e:
+                        log.error(f"Failed to scrape {url}: {e}")
 
     def _scrape_url(self, url: str):
         """

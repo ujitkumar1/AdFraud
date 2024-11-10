@@ -15,6 +15,8 @@ class Config:
     BASE_TOPIC: str = "Ad fraud in mobile marketing"
     REQUIRED_KEYWORDS: List[str] = ["ad fraud", "prevention", "ad networks", "legal", "economic impact"]
 
+    MAX_TRIES: int = 4
+
     @staticmethod
     def validate_config():
         if not Config.GOOGLE_API_KEY or not Config.SEARCH_ENGINE_ID:

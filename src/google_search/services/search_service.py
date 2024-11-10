@@ -1,16 +1,15 @@
-import json
-import os
-import re
 from time import sleep
 from typing import List, Dict
 
 import google.generativeai as genai
-import pandas as pd
 import requests
 
 from src.google_search.config.config import Config
-from src.google_search.utils.promt_util import Prompts
-from src.google_search.utils.query_validator import QueryValidator
+from src.google_search.prompts.prompt_generator import PromptGenerator
+from src.google_search.services.file_service import FileService
+from src.google_search.services.queries_service import QueriesService
+from src.google_search.utils.query_utils import QueryUtils
+from src.google_search.validators.query_validator import QueryValidator
 from src.logger import log
 
 
@@ -42,34 +41,13 @@ class SearchService:
         """
         num_queries_per_technique *= 2
 
-        def clean_query(query: str) -> str:
-            """Clean and format a query string."""
-            query = re.sub(r'^[-\d\s•.]*', '', query.strip())
-            query = re.sub(r'^[A-Za-z]+:\s*', '', query)
-            return query.strip().strip('"')
-
-        def generate_and_filter_queries(prompt: str) -> List[str]:
-            try:
-                response = self.model.generate_content(prompt)
-                queries = [clean_query(q) for q in response.text.strip().split('\n')]
-
-                quality_queries = [q for q in queries if len(q) > 5 and len(q.split()) >= 3]
-                return quality_queries
-            except Exception as e:
-                log.error(f"Error generating queries: {e}")
-                return []
-
         log.info("Generating queries using the Zero Shot technique...")
 
-        prompt = Prompts().zero_shot_prompt(self.base_topic, num_queries_per_technique)
-        queries = generate_and_filter_queries(prompt)
+        prompt = PromptGenerator().zero_shot_prompt(self.base_topic, num_queries_per_technique)
+        queries = QueriesService.generate_and_filter_queries(self.model, prompt)
 
         if not queries:
-            queries = [
-                f'"{self.base_topic} technical implementation"',
-                f'"{self.base_topic} methodology"',
-                f'"{self.base_topic} case study and analysis"'
-            ]
+            queries = QueryUtils.default_queries(self.base_topic)
 
         results = queries
 
@@ -101,7 +79,16 @@ class SearchService:
         }
 
         try:
-            response = requests.get(base_url, params=params)
+            CURRENT_TRIES = 0
+            while CURRENT_TRIES <= Config.MAX_TRIES:
+                response = requests.get(base_url, params=params)
+
+                if response.status_code == 200:
+                    break
+
+                CURRENT_TRIES += 1
+                sleep(1)
+
             return response.json()
         except requests.exceptions.RequestException as e:
             log.error(f"Error executing search: {e}")
@@ -168,29 +155,5 @@ class SearchService:
             return all_resources
 
     def save_results(self, resources: List[dict], output_format: str = 'csv'):
-        """
-            Save the collected resources to a file in the specified format.
-
-            :arg
-                resources : List[dict]
-                    A list of dictionaries, each representing a resource with details like title, URL, and snippet.
-                output_format : str, optional
-                    The format to save the file in, either 'csv' or 'json' (default is 'csv').
-
-            :return
-                None
-                    Saves the resources to a file in the 'data' directory, named either 'research_resources.json' or 'research_resources.csv' based on the specified format.
-        """
-        os.makedirs('data', exist_ok=True)
-
-        if output_format.lower() == 'json':
-            output_path = 'data/research_resources.json'
-            with open(output_path, 'w', encoding='utf-8') as f:
-                json.dump(resources, f, indent=4, ensure_ascii=False)
-            log.info(f"Results saved to {output_path}")
-
-        elif output_format.lower() == 'csv':
-            output_path = 'data/research_resources.csv'
-            df = pd.DataFrame(resources)
-            df.to_csv(output_path, index=False, encoding='utf-8')
-            log.info(f"Results saved to {output_path}")
+        """Delegate file saving to the FileService."""
+        FileService.save_results(resources, output_format)
