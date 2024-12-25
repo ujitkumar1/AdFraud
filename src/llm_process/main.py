@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-from src.llm_process.service.fradu_analyzer import MobileAdFraudAnalyzer
+from src.llm_process.service.fraud_analyzer_service import MobileAdFraudAnalyzer
 from src.logger import log
 
 

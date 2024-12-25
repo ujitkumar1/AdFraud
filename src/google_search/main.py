@@ -2,7 +2,7 @@ import os
 
 from src.google_search.config.config import Config
 from src.google_search.services.search_service import SearchService
-from src.google_search.utils.scraper import ContentScraper
+from src.google_search.services.content_scraper import ContentScraper
 from src.logger import log
 
 base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
